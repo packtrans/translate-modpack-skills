@@ -13,7 +13,8 @@ A specialized skill set for translating Minecraft modpacks using AI agents. This
 
 - Git
 - An AI agent tool that supports skills (e.g., Claude Code, Codex, OpenCode)
-- One of the following for zipping: `zip`, `7z`, or Python with `zipfile` module
+- One of the following for zipping: `zip` or `7z` for packing
+- Python: Agents may need write script to translate and verify files.
 
 ## Quick Start
 

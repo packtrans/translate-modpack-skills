@@ -49,7 +49,7 @@ We split translation guidelines by modules. `ftbquests` and `kubejs` modules are
 
 ## Steps
 
->  It would be better if you can do heavy steps in a single dedicated sub-agent.
+>  It would be better if you can do heavy steps in a single dedicated sub-agent. When spawning sub-agent, always ask sub-agent to load `translate-minecraft-modpack` skill.
 
 Do translatation in order:
 
@@ -86,6 +86,7 @@ For example, if you are translating language file like `kubejs/assets/kubejs/lan
 - NEVER translate modpack name into other language unless the source language of name is not English.
 - Preserve Minecraft formatting codes such as `§b`, `§r`, `\u0026a`, etc.
 - Preserve string placeholders like `%s`, `%d`, `%1$s`.
+- Preserve mod name as-is, like `Applied Energistics`, `Botania`, `Mekanism`, `Immersive Engineering`.
 
 You MUST require user to confirm the translation before next step.
 
