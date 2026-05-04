@@ -62,7 +62,8 @@ Open your AI agent and send a translation prompt like:
 The agent will:
 1. **Scan** - Identify files needing translation and extract key terms
 2. **Translate** - Generate translations in `out/<modpack-slug>/<version>/<lang-code>/`
-3. **Zip** - Package the final translation into a distributable zip file
+3. **Verify** - Check file syntax error, especially snbt files which agent is not familiar with.  
+4. **Zip** - Package the final translation into a distributable zip file
 
 Review the generated `files.json` and `terms.json`, confirm translations, and test in-game.
 

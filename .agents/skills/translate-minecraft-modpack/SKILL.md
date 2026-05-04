@@ -79,7 +79,7 @@ You MUST require user to confirm the terms before next step.
 
 When translating, create a copy of the source file and save it in the corresponding location under the out folder. 
 
-For example, if you are translating language file like `kubejs/assets/kubejs/lang/en_us.json`, you should save the translation to `out/<modpack-slug>/<version>/<lang-code>/kubejs/assets/kubejs/lang/<lang-code>.json`, this applied to quest lang snbt file (like `config/ftbquests/quests/lang/en_us.snbt`) as well. For non-lang `.snbt` file, `.js` and other scripts files, you should save it in the same path but with original file name.  Only modify the translated strings; keep file names, internal keys, structure, and non-text data exactly as in the original.
+For example, if you are translating language file like `kubejs/assets/kubejs/lang/en_us.json`, you should save the translation to `out/<modpack-slug>/<version>/<lang-code>/trans/kubejs/assets/kubejs/lang/<lang-code>.json`, this applied to quest lang snbt file (like `config/ftbquests/quests/lang/en_us.snbt`) as well. For non-lang `.snbt` file, `.js` and other scripts files, you should save it in the same path but with original file name.  Only modify the translated strings; keep file names, internal keys, structure, and non-text data exactly as in the original.
 
 #### Rules MUST follow when translating
 
@@ -88,8 +88,24 @@ For example, if you are translating language file like `kubejs/assets/kubejs/lan
 - Preserve string placeholders like `%s`, `%d`, `%1$s`.
 - Preserve mod name as-is, like `Applied Energistics`, `Botania`, `Mekanism`, `Immersive Engineering`.
 
+### Verify
+
+Run [`snbt_check.py`](scripts/snbt_check.py) on all snbt files to check syntax error. Run [`json_check.py`](scripts/json_check.json) on all json files to check JSON syntax error.
+
+```sh
+# Check specific files
+python3 snbt_check.py file1.snbt file2.snbt
+
+# Recursively scan a directory
+python3 snbt_check.py -r config/ftbquests/quests
+
+# The same args for json_check
+python3 json_check.py file1.snbt file2.snbt
+python3 json_check.py -r config/ftbquests/quests
+```
+
 You MUST require user to confirm the translation before next step.
 
 ### Zip
 
-Pack the files and folders under `out/<modpack-slug>/<version>/<lang-code>` into a zip file named `<modpack-slug>-<version>-<lang-code>.zip`, `config` folder should be at the top layer, DO NOT add an extra top folder. Try these command: `zip -r <out> <in>`, `7z a <out> -tzip <in>`, `python/python3 -m zipfile -c <out> <in>` to pack, noting that `<out>` and `<in>` may be different in these command. If none of them works, tell user to install one of them and how to zip the out folder manually.
+Pack the files and folders under `out/<modpack-slug>/<version>/<lang-code>/trans` into a zip file named `<modpack-slug>-<version>-<lang-code>.zip` under `out/<modpack-slug>/<version>/<lang-code>`, `config` folder should be at the top layer, DO NOT add an extra top folder. Try these command: `zip -r <out> <in>`, `7z a <out> -tzip <in>`, `python/python3 -m zipfile -c <out> <in>` to pack, noting that `<out>` and `<in>` may be different in these command. If none of them works, tell user to install one of them and how to zip the out folder manually.

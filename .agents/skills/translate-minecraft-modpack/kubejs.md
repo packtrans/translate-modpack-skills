@@ -68,25 +68,55 @@ Example (`startup_scripts/mekanism/custom_gas.js`):
 
 > **Note:** The preferred modding practice is to use `Text.translate("your.mod.key")` and put the text in a lang file, but many packs still hardcode strings. If the script already uses `Text.translate()`, only the lang file needs translation.
 
-#### Registry Loops with Auto-Generated IDs
+#### Registry Loops with Auto-Generated IDs from name
 
 Some startup scripts register items in a loop where the registry ID is derived from a display name. In these cases, **do not translate the ID**; only translate the display name passed to the register function.
 
-Common pattern with `formatId`:
+Common pattern with auto-generated ID from name:
 
-```javascript
-function formatId(name) {
-    return name.toLowerCase().replace(/'/, '').replace(/[^a-z]+/g, '_');
-}
+```js
+StartupEvents.registry('fluid', (event) => {
+    const fluids = [
+        {
+            name: 'Fluid 1',
+            // add an extra __cn_name__ field to add translated name
+            __cn_name__: "流体 1",
+            type: 'thick',
+            color: '#123456'
+        },
+        {
+            name: 'Fluid 2',
+            __cn_name__: "流体 2",
+            type: 'thin',
+            color: '#654321'
+        },
+    ];
 
-const items = [
-  { name: "Item A", "__cn_name__": "物品 A" },
-  { name: "Item B", "__cn_name__": "物品 B" }
-]
+    fluids.forEach((fluid) => {
+        event
+            .create(`packid:${getID(fluid.name)}`, fluid.type)
+            .displayName(fluid.__cn_name__)
+            .tint(fluid.color)
+            .tag(`c:${getID(fluid.name)}`)
+            .bucketItem.containerItem('minecraft:bucket');
+    });
+});
+```
 
-items.forEach(item => {
-  ItemRegistry.register(`prefix:${formatId(item.name)}`, item.__cn_name__);
-})
+```js
+
+StartupEvents.registry('block', (event) => {
+  // If we only have a string array with item name
+  const blocks = ["Item A", "Item B"];
+  // create another string with translated name
+  const blocks__cn_name__ = ["物品 A", "物品 B"]
+
+  blocks.forEach((block, index) => {
+    event
+      .create(`packid:${getID(block)}`)
+      .displayName(blocks__cn_name__[index]);
+  });
+});
 ```
 
 > **Rule of thumb:** If a string is used to build a registry ID, a file path, or a translation key, leave it untouched. Only translate strings that are passed directly as display names or tooltips.
