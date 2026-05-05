@@ -43,7 +43,32 @@ Example (`assets/kubejs/lang/en_us.json` → `zh_cn.json`):
 }
 ```
 
-### 2. Startup Scripts with Hardcoded Names
+### 2. Guide Text
+
+Modpacks may include in-game guide files under paths like `assets/<namespace>/guides/**/*.md` (also `.txt` or `.json`). These are usually rendered by guide-book mods (e.g., Patchouli, GuideMe, or custom KubeJS integrations).
+
+#### What to translate
+
+- **YAML frontmatter values**: If the file starts with `---`, translate human-readable string values inside the frontmatter (e.g., `navigation.title`, `title`). Do **not** translate keys or identifiers such as `icon`, `parent`, `item_ids`, or `src`.
+- **Markdown headings and body text**: Translate `# Heading`, `## Subheading`, and normal paragraphs.
+- **Plain text in `.txt` guide files**: Translate all human-readable text.
+- **String values in `.json` guide files**: Translate only the displayable JSON values, keeping keys, indentifiers, and structural fields unchanged.
+
+#### What NOT to translate
+
+- **Component tags and their IDs / attributes**: Tags like `<BlockImage id="..." />`, `<ItemLink id="..." />`, `<GameScene ...>`, `<ImportStructure src="..." />`, `<IsometricCamera ... />` are functional markup. Do **not** translate `id`, `src`, `zoom`, `yaw`, `pitch`, `scale`, or similar attributes.
+- **File references**: `parent: index.md`, `src="my_structure.nbt"`, and similar references must stay exactly as-is.
+- **Item IDs, registry names, or NBT paths**: Any string that looks like a resource location (`modid:block_name`) is an identifier and must not be translated.
+- **`.nbt` or texture files**: These are binary data and must not be translated.
+
+#### Output path
+
+Save translated guide files under the same relative path in the output folder, keeping the original file name. For example:
+
+- Source: `kubejs/assets/packid/guides/guideid/guide/index.md`
+- Output: `out/<modpack>/<version>/<lang-code>/trans/kubejs/assets/packid/guides/guideid/guide/index.md`
+
+### 3. Startup Scripts with Hardcoded Names
 
 Scripts under `startup_scripts/` register custom items, blocks, fluids, gases, etc. Some use hardcoded `.displayName()` or `.tooltip()` strings instead of translation keys.
 
@@ -121,7 +146,7 @@ StartupEvents.registry('block', (event) => {
 
 > **Rule of thumb:** If a string is used to build a registry ID, a file path, or a translation key, leave it untouched. Only translate strings that are passed directly as display names or tooltips.
 
-### 3. Client Scripts with Hardcoded Text
+### 4. Client Scripts with Hardcoded Text
 
 Scripts under `client_scripts/` often add tooltips, modify item names, or handle JEI events.
 
@@ -159,10 +184,6 @@ let colorfulnames = [
 ```
 
 If the script already references translation keys (e.g., `Text.translate("mek1000.sml_drill.desc")`), **do not modify the script**; translate the corresponding lang file instead.
-
-### 4. Lang Files Belonging to Other Mods Inside KubeJS
-
-Sometimes KubeJS `assets/` contains lang files for other mods or helper mods (e.g., `assets/ftbquestlocalizer/lang/en_us.json`). Translate these exactly like normal lang files.
 
 ## What NOT to Translate
 

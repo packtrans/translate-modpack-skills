@@ -57,7 +57,7 @@ Do translatation in order:
 
 Scan files in only mentioned folder, generate a `files.json` and a `terms.json`.
 
-`files.json` including all file need be changed (if a file only contains translation key like `ftbquests.chapter_groups_123456.title` but not real text phrase to translate, we don't include that file). Example:
+`files.json` including all file need be changed in a single array (if a file only contains translation key like `ftbquests.chapter_groups_123456.title` but not real text phrase to translate, we don't include that file). Example:
 
 ```json
 [
@@ -67,7 +67,7 @@ Scan files in only mentioned folder, generate a `files.json` and a `terms.json`.
 
 `terms.json` containing all generic terms (usually item name) and their translation in these files. Keep this file small, don't put  entire sentences in this file. Example:
 
-```
+```json
 {
   "Some Generic Term": "Some Generic Term in target language"
 }

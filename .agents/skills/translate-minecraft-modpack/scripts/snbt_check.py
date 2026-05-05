@@ -9,7 +9,18 @@ Usage:
 
 import argparse
 import sys
+from enum import Enum, auto
 from pathlib import Path
+
+
+class State(Enum):
+    DEFAULT = auto()
+    IN_DOUBLE_STRING = auto()
+    DOUBLE_STRING_ESCAPE = auto()
+    IN_SINGLE_STRING = auto()
+    SINGLE_STRING_ESCAPE = auto()
+    COMMENT = auto()
+    AFTER_STRING = auto()
 
 
 def validate_snbt(content: str, filename: str = "<input>"):
@@ -20,9 +31,10 @@ def validate_snbt(content: str, filename: str = "<input>"):
     errors = []
     # stack holds tuples: (char, line, col)
     bracket_stack = []
-    in_string = None  # None, '"', or "'"
-    escape_next = False
-    skip_to_eol = False
+
+    state = State.DEFAULT
+    last_string_close = (-1, -1)  # (line, col) of the quote that closed the string
+    after_string_whitespace = False
 
     line_num = 1
     col_num = 0
@@ -31,56 +43,114 @@ def validate_snbt(content: str, filename: str = "<input>"):
         if ch == "\n":
             line_num += 1
             col_num = 0
-            skip_to_eol = False
-            continue
-        col_num += 1
+        else:
+            col_num += 1
 
-        if skip_to_eol:
+        # COMMENT state
+        if state is State.COMMENT:
+            if ch == "\n":
+                state = State.DEFAULT
             continue
 
-        if in_string:
-            if escape_next:
-                escape_next = False
+        # AFTER_STRING state: validate what follows a closed string
+        if state is State.AFTER_STRING:
+            if ch in " \t\r\n":
+                after_string_whitespace = True
                 continue
+            if ch in ",:;{}[]()#":
+                state = State.DEFAULT
+                after_string_whitespace = False
+                if ch == "#":
+                    state = State.COMMENT
+                    continue
+                # Fall through to DEFAULT handling for structural chars
+            elif ch in "'\"":
+                # Another string immediately after – could be valid in lists/arrays,
+                # so treat it leniently and let DEFAULT handle the quote.
+                state = State.DEFAULT
+                after_string_whitespace = False
+                # Fall through to DEFAULT handling
+            else:
+                if not after_string_whitespace:
+                    # The string was immediately followed by a bare word with
+                    # no whitespace – the closing quote was probably unescaped.
+                    sl, sc = last_string_close
+                    errors.append(
+                        f"{filename}:{line_num}:{col_num}: unexpected character '{ch}' "
+                        f"after string (closed at {sl}:{sc})"
+                    )
+                state = State.DEFAULT
+                after_string_whitespace = False
+                # Fall through to DEFAULT handling for the current char
+
+        if state is State.DEFAULT:
+            if ch in "([{":
+                bracket_stack.append((ch, line_num, col_num))
+            elif ch in ")]}":
+                if not bracket_stack:
+                    errors.append(
+                        f"{filename}:{line_num}:{col_num}: unexpected closing '{ch}'"
+                    )
+                else:
+                    top, top_line, top_col = bracket_stack.pop()
+                    expected = {"(": ")", "[": "]", "{": "}"}.get(top)
+                    if expected != ch:
+                        errors.append(
+                            f"{filename}:{line_num}:{col_num}: mismatched bracket: "
+                            f"expected '{expected}' to close '{top}' from {top_line}:{top_col}, got '{ch}'"
+                        )
+            elif ch == '"':
+                state = State.IN_DOUBLE_STRING
+            elif ch == "'":
+                state = State.IN_SINGLE_STRING
+            elif ch == "#":
+                state = State.COMMENT
+            continue
+
+        if state is State.IN_DOUBLE_STRING:
             if ch == "\\":
-                escape_next = True
-                continue
-            if ch == in_string:
-                in_string = None
-                continue
-            continue
-
-        # Outside of string
-        if ch in ('"', "'"):
-            in_string = ch
-            continue
-
-        # Comments start with # and go to end of line
-        if ch == "#":
-            skip_to_eol = True
-            continue
-
-        if ch in "([{":
-            bracket_stack.append((ch, line_num, col_num))
-        elif ch in ")]}":
-            if not bracket_stack:
+                state = State.DOUBLE_STRING_ESCAPE
+            elif ch == '"':
+                state = State.AFTER_STRING
+                after_string_whitespace = False
+                last_string_close = (line_num, col_num)
+            elif ch == "\n":
                 errors.append(
-                    f"{filename}:{line_num}:{col_num}: unexpected closing '{ch}'"
+                    f"{filename}:{line_num}:{col_num}: newline in double-quoted string"
                 )
-                continue
-            top, top_line, top_col = bracket_stack.pop()
-            expected = {"(": ")", "[": "]", "{": "}"}.get(top)
-            if expected != ch:
+                state = State.DEFAULT
+            continue
+
+        if state is State.DOUBLE_STRING_ESCAPE:
+            state = State.IN_DOUBLE_STRING
+            continue
+
+        if state is State.IN_SINGLE_STRING:
+            if ch == "\\":
+                state = State.SINGLE_STRING_ESCAPE
+            elif ch == "'":
+                state = State.AFTER_STRING
+                after_string_whitespace = False
+                last_string_close = (line_num, col_num)
+            elif ch == "\n":
                 errors.append(
-                    f"{filename}:{line_num}:{col_num}: mismatched bracket: "
-                    f"expected '{expected}' to close '{top}' from {top_line}:{top_col}, got '{ch}'"
+                    f"{filename}:{line_num}:{col_num}: newline in single-quoted string"
                 )
+                state = State.DEFAULT
+            continue
+
+        if state is State.SINGLE_STRING_ESCAPE:
+            state = State.IN_SINGLE_STRING
+            continue
+
+    # End-of-file checks
+    if state in (State.IN_DOUBLE_STRING, State.DOUBLE_STRING_ESCAPE):
+        errors.append(f"{filename}: unclosed double-quoted string")
+    elif state in (State.IN_SINGLE_STRING, State.SINGLE_STRING_ESCAPE):
+        errors.append(f"{filename}: unclosed single-quoted string")
 
     for ch, line, col in bracket_stack:
         errors.append(f"{filename}:{line}:{col}: unclosed bracket '{ch}'")
-
-    if in_string:
-        errors.append(f"{filename}: unclosed string starting with {in_string}")
 
     return errors
 
