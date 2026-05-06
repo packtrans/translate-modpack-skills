@@ -1,2 +1,3 @@
-1. Large file chunks
-2. Item name lookup
+[x] Large file chunks
+[ ] Item name lookup
+[ ] Upgrade version

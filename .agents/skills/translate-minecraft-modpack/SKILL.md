@@ -81,6 +81,15 @@ When translating, create a copy of the source file and save it in the correspond
 
 For example, if you are translating language file like `kubejs/assets/kubejs/lang/en_us.json`, you should save the translation to `out/<modpack-slug>/<version>/<lang-code>/trans/kubejs/assets/kubejs/lang/<lang-code>.json`, this applied to quest lang snbt file (like `config/ftbquests/quests/lang/en_us.snbt`) as well. For non-lang `.snbt` file, `.js` and other scripts files, you should save it in the same path but with original file name.  Only modify the translated strings; keep file names, internal keys, structure, and non-text data exactly as in the original.
 
+#### Large File Processing
+
+If a file has more than 500 lines, split it into multiple chunks with no more than 500 lines each. Each chunk should be processed in a dedicated sub-agent (always ask sub-agent to load `translate-minecraft-modpack` skill). Use different splitting strategies depending on file type:
+
+1. **JSON and SNBT files**: Split at object/array boundaries so every chunk remains valid JSON or SNBT. Keep the outermost brackets (`{}` or `[]`) in every chunk so each chunk is parseable on its own — do not break in the middle of a key-value pair or nested structure.
+2. **Markdown and plain text files**: Do not split in the middle of a section or paragraph. Keep context as complete as possible — split at section headings or natural breaks only.
+
+After all chunks are translated, merge them back into a single file and validate the complete file using the Verify step.
+
 #### Rules MUST follow when translating
 
 - NEVER translate modpack name into other language unless the source language of name is not English.
@@ -90,18 +99,19 @@ For example, if you are translating language file like `kubejs/assets/kubejs/lan
 
 ### Verify
 
-Run [`snbt_check.py`](scripts/snbt_check.py) on all snbt files to check syntax error. Run [`json_check.py`](scripts/json_check.json) on all json files to check JSON syntax error.
+For each JSON and SNBT translated file, Run [`syntax_check.py`](scripts/syntax_check.py) on all translated files to check syntax errors first, then run [`key_check.py`](scripts/key_check.py) to ensure no keys were accidentally added or removed during translation.
 
 ```sh
 # Check specific files
-python3 snbt_check.py file1.snbt file2.snbt
+python3 syntax_check.py file1.snbt file2.json
 
 # Recursively scan a directory
-python3 snbt_check.py -r config/ftbquests/quests
+python3 syntax_check.py -r config/ftbquests/quests
+python3 syntax_check.py -r config/kubejs/assets
 
-# The same args for json_check
-python3 json_check.py file1.snbt file2.snbt
-python3 json_check.py -r config/ftbquests/quests
+# Diff keys between source and translated files
+python3 key_check.py packs/.../en_us.snbt out/.../zh_cn/trans/.../zh_cn.snbt
+python3 key_check.py -r packs/.../kubejs out/.../zh_cn/trans/kubejs
 ```
 
 You MUST require user to confirm the translation before next step.
