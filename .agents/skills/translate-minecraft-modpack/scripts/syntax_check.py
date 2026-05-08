@@ -15,7 +15,7 @@ import json
 import sys
 from pathlib import Path
 
-from snbt_parser import SnbtParseError, parse_snbt
+from snbt_parser import SnbtError, parse
 
 
 # ---------------------------------------------------------------------------
@@ -39,10 +39,10 @@ def validate_json(content: str, filename: str = "<input>"):
 
 def validate_snbt(content: str, filename: str = "<input>"):
     try:
-        parse_snbt(content, filename)
+        parse(content)
         return []
-    except SnbtParseError as exc:
-        return [str(exc)]
+    except SnbtError as exc:
+        return [f"{filename}:{exc}"]
 
 
 # ---------------------------------------------------------------------------

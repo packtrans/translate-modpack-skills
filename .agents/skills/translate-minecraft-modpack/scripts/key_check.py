@@ -15,7 +15,7 @@ import json
 import sys
 from pathlib import Path
 
-from snbt_parser import AstNode, CompoundNode, ListNode, parse_snbt
+from snbt_parser import SnbtComment, SnbtCompound, SnbtEntry, SnbtList, SnbtNode, parse
 
 # ---------------------------------------------------------------------------
 # JSON key extraction
@@ -42,23 +42,26 @@ def extract_json_keys(data, prefix: str = "") -> set[str]:
 # ---------------------------------------------------------------------------
 
 
-def _walk_ast_keys(node: AstNode, prefix: str = "") -> set[str]:
+def _walk_ast_keys(node: SnbtNode, prefix: str = "") -> set[str]:
     keys: set[str] = set()
-    if isinstance(node, CompoundNode):
+    if isinstance(node, SnbtCompound):
         for entry in node.entries:
+            if not isinstance(entry, SnbtEntry):
+                continue
             key = f"{prefix}.{entry.key}" if prefix else entry.key
             keys.add(key)
             keys.update(_walk_ast_keys(entry.value, key))
-    elif isinstance(node, ListNode):
-        for i, element in enumerate(node.elements):
+    elif isinstance(node, SnbtList):
+        real_items = [item for item in node.items if not isinstance(item, SnbtComment)]
+        for i, element in enumerate(real_items):
             key = f"{prefix}[{i}]" if prefix else f"[{i}]"
             keys.update(_walk_ast_keys(element, key))
     return keys
 
 
 def extract_snbt_keys(content: str) -> set[str]:
-    ast = parse_snbt(content)
-    return _walk_ast_keys(ast)
+    doc = parse(content)
+    return _walk_ast_keys(doc.root)
 
 
 # ---------------------------------------------------------------------------
