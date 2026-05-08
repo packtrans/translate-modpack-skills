@@ -15,6 +15,8 @@ import json
 import sys
 from pathlib import Path
 
+from snbt_parser import AstNode, CompoundNode, ListNode, parse_snbt
+
 # ---------------------------------------------------------------------------
 # JSON key extraction
 # ---------------------------------------------------------------------------
@@ -36,147 +38,27 @@ def extract_json_keys(data, prefix: str = "") -> set[str]:
 
 
 # ---------------------------------------------------------------------------
-# SNBT key extraction
+# SNBT key extraction (via snbt_parser AST)
 # ---------------------------------------------------------------------------
 
 
-def extract_snbt_keys(content: str) -> set[str]:
-    """
-    Extract dotted keys from an SNBT file.
-    Only keys inside compounds are tracked; list indices are ignored.
-    """
+def _walk_ast_keys(node: AstNode, prefix: str = "") -> set[str]:
     keys: set[str] = set()
-    path: list[str] = []
-
-    i = 0
-    n = len(content)
-
-    def skip_whitespace_and_comments():
-        nonlocal i
-        while i < n:
-            ch = content[i]
-            if ch in " \t\r\n":
-                i += 1
-            elif ch == "#":
-                while i < n and content[i] != "\n":
-                    i += 1
-            else:
-                break
-
-    def parse_string():
-        nonlocal i
-        quote = content[i]
-        i += 1
-        while i < n and content[i] != quote:
-            if content[i] == "\\" and i + 1 < n:
-                i += 2
-            else:
-                i += 1
-        if i < n and content[i] == quote:
-            i += 1
-
-    def parse_unquoted_string():
-        nonlocal i
-        while i < n and content[i] not in " \t\r\n,;:{}[]()\"'#":
-            i += 1
-
-    def parse_value():
-        nonlocal i
-        skip_whitespace_and_comments()
-        if i >= n:
-            return
-        ch = content[i]
-        if ch == '"' or ch == "'":
-            parse_string()
-        elif ch == "{":
-            parse_compound()
-        elif ch == "[":
-            parse_list()
-        else:
-            parse_unquoted_string()
-
-    def parse_compound():
-        nonlocal i
-        i += 1  # skip '{'
-        while True:
-            skip_whitespace_and_comments()
-            if i < n and content[i] == "}":
-                i += 1
-                return
-
-            # Expect key
-            skip_whitespace_and_comments()
-            if i >= n:
-                return
-            if content[i] == '"' or content[i] == "'":
-                key_start = i + 1
-                parse_string()
-                key = content[key_start : i - 1]
-            else:
-                key_start = i
-                parse_unquoted_string()
-                key = content[key_start:i]
-
-            skip_whitespace_and_comments()
-            if i < n and content[i] == ":":
-                i += 1
-
-            full_key = ".".join(path + [key])
-            keys.add(full_key)
-
-            # Parse value
-            path.append(key)
-            parse_value()
-            path.pop()
-
-            skip_whitespace_and_comments()
-            if i < n and content[i] == ",":
-                i += 1
-                continue
-            elif i < n and content[i] == "}":
-                i += 1
-                return
-            else:
-                if i >= n:
-                    return
-                # SNBT commas are optional; continue to next entry
-                continue
-
-    def parse_list():
-        nonlocal i
-        i += 1  # skip '['
-        skip_whitespace_and_comments()
-        # Handle typed array prefix like [B; [I; [L;
-        if i < n and content[i].isalpha():
-            while i < n and content[i].isalpha():
-                i += 1
-            skip_whitespace_and_comments()
-            if i < n and content[i] == ";":
-                i += 1
-
-        while True:
-            skip_whitespace_and_comments()
-            if i < n and content[i] == "]":
-                i += 1
-                return
-            parse_value()
-            skip_whitespace_and_comments()
-            if i < n and content[i] == ",":
-                i += 1
-                continue
-            elif i < n and content[i] == "]":
-                i += 1
-                return
-            else:
-                if i >= n:
-                    return
-                # SNBT commas are optional; continue to next entry
-                continue
-
-    skip_whitespace_and_comments()
-    if i < n and content[i] == "{":
-        parse_compound()
+    if isinstance(node, CompoundNode):
+        for entry in node.entries:
+            key = f"{prefix}.{entry.key}" if prefix else entry.key
+            keys.add(key)
+            keys.update(_walk_ast_keys(entry.value, key))
+    elif isinstance(node, ListNode):
+        for i, element in enumerate(node.elements):
+            key = f"{prefix}[{i}]" if prefix else f"[{i}]"
+            keys.update(_walk_ast_keys(element, key))
     return keys
+
+
+def extract_snbt_keys(content: str) -> set[str]:
+    ast = parse_snbt(content)
+    return _walk_ast_keys(ast)
 
 
 # ---------------------------------------------------------------------------
